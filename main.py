@@ -65,12 +65,6 @@ async def on_message(message):
 		username = msg.split("+userlist ")[1]
 		await message.channel.send(list_user(username))
 
-	if msg == '+hentai_random':
-		hentai_title, hentai_image = hentai_fetcher.random_hentai()
-		await message.channel.send(hentai_title)
-		image = discord.Embed()
-		image.set_image(url=hentai_image)
-		await message.channel.send(embed=image)
 
 
 client.run(TOKEN)
