@@ -1,19 +1,13 @@
-#Todo:
-#1. Anime duplicates
-#2. Separate database for different server
-#3. Deployment
-#4. Exception handling
-#	a. When input format not followed
-#5. Default appending when no rank supplied
-#6. Use whole discord username with number
-#7. Json temporary database
-
 import discord
 import anime_fetcher
-import hentai_fetcher
+import os
+from dotenv import load_dotenv
 
+# Module for fetching hentai is currently not working
 
-TOKEN = 'ODY4Nzc0NDY3MzE1MzIyOTMx.YP0jRg.l_ZIwe0SCB1XrEZyKo0c1O_4xbU'
+load_dotenv()
+TOKEN = os.getenv('DISCORD_TOKEN')
+
 client = discord.Client()
 
 database = {
