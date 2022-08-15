@@ -66,7 +66,7 @@ async def on_message(message):
 			await message.channel.send(anime_list)
 		else:
 			for anime in anime_list:
-				await message.channel.send(anime.title)
+				await message.channel.send(f'{anime.rank}. {anime.title}')
 
 
 	if msg == '+help' or msg == '+anime haven':

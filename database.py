@@ -3,16 +3,25 @@ from datetime import datetime
 from datetime import timedelta
 
 class Anime:
-    def __init__(self, title, image_url, anilist_id) -> None:
-        self.title = title
-        self.image_url = image_url
-        self.anilist_id = anilist_id
+  def __init__(self, title, image_url, anilist_id) -> None:
+    self.title = title
+    self.image_url = image_url
+    self.anilist_id = anilist_id
 
 
 class User:
-    def __init__(self, username, discord_id) -> None:
-        self.username = username
-        self.discord_id = discord_id
+  def __init__(self, username, discord_id) -> None:
+    self.username = username
+    self.discord_id = discord_id
+
+
+class AnimeEntry:
+  def __init__(self, title, image_url, anilist_id, date, rank) -> None:
+    self.title = title
+    self.image_url = image_url
+    self.anilist_id = anilist_id
+    self.date = date
+    self.rank = rank
 
 
 
@@ -162,28 +171,54 @@ def db_get_anime_list_by_user(discord_id):
   c.execute(f'SELECT UserId FROM User WHERE DiscordId = "{discord_id}"')
   user_id = c.fetchone()[0]
   c.execute(f'''
-    SELECT Anime.Title, Anime.ImageUrl, Anime.AnilistId
-      FROM Entry JOIN Anime 
-      ON Entry.AnimeId = Anime.AnimeId 
-      WHERE Entry.UserId = {user_id}
+    SELECT 
+      Anime.Title,
+      Anime.ImageUrl,
+      Anime.AnilistId,
+      Entry.Date,
+      Entry.Rank
+    FROM
+      Entry 
+    JOIN Anime 
+      ON Entry.AnimeId = Anime.AnimeId
+    WHERE 
+      Entry.UserId = {user_id}
+    ORDER BY
+      Entry.Rank ASC
   ''')
-  anime_titles = c.fetchall()
+  entries = c.fetchall()
   conn.commit()
   conn.close()
-  if anime_titles == []:
+  if entries == []:
     return False
   else:
-    return list(map(lambda anime: Anime(anime[0], anime[1], anime[2]), anime_titles))
+    return list(map(lambda entry: AnimeEntry(entry[0], entry[1], entry[2], entry[3], entry[4]), entries))
+
+
+
+def db_preprocess_rank(discord_id, input_rank):
+  conn = sqlite3.connect('data.db')
+  c = conn.cursor()
+  c.execute(f'SELECT UserId FROM User WHERE DiscordId = "{discord_id}"')
+  user_id = c.fetchone()[0]
+  c.execute(f'SELECT COUNT(EntryId) From Entry WHERE UserId = {user_id}')
+  max_rank = c.fetchone()[0]
+  # Reverse to resolve double operation
+  for current_rank in range(max_rank, input_rank-1, -1):
+    c.execute(f'UPDATE Entry SET Rank = {current_rank + 1} WHERE Rank = {current_rank}')
+  conn.commit()
+  conn.close()
+  return 0
 
 
 
 # For test only, will delete
-def db_reset():
-  conn = sqlite3.connect('data.db')
-  c = conn.cursor()
-  c.execute('DROP TABLE User')
-  c.execute('DROP TABLE Anime')
-  c.execute('DROP TABLE Entry')
-  conn.commit()
-  conn.close()
-  return 0
+# def db_reset():
+#   conn = sqlite3.connect('data.db')
+#   c = conn.cursor()
+#   c.execute('DROP TABLE User')
+#   c.execute('DROP TABLE Anime')
+#   c.execute('DROP TABLE Entry')
+#   conn.commit()
+#   conn.close()
+#   return 0
