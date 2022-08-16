@@ -2,6 +2,12 @@ import sqlite3
 from datetime import datetime
 from datetime import timedelta
 
+class User:
+  def __init__(self, username, discord_id) -> None:
+    self.username = username
+    self.discord_id = discord_id
+
+
 class Anime:
   def __init__(self, title, image_url, anilist_id) -> None:
     self.title = title
@@ -9,10 +15,11 @@ class Anime:
     self.anilist_id = anilist_id
 
 
-class User:
-  def __init__(self, username, discord_id) -> None:
-    self.username = username
-    self.discord_id = discord_id
+class Character:
+  def __init__(self, name, image_url, anilist_id) -> None:
+    self.name = name
+    self.image_url = image_url
+    self.anilist_id = anilist_id
 
 
 class AnimeEntry:
@@ -22,6 +29,16 @@ class AnimeEntry:
     self.anilist_id = anilist_id
     self.date = date
     self.rank = rank
+
+
+class CharacterEntry:
+  def __init__(self, name, image_url, anilist_id, date, rank) -> None:
+    self.name = name
+    self.image_url = image_url
+    self.anilist_id = anilist_id
+    self.date = date
+    self.rank = rank
+
 
 
 
@@ -35,7 +52,6 @@ def db_create_tables():
         DiscordId INTEGER   NOT NULL
       )
     ''')
-    
     c.execute('''
       CREATE TABLE Anime (
         AnimeId   INTEGER   PRIMARY KEY,
@@ -44,10 +60,17 @@ def db_create_tables():
         AnilistId INTEGER   NOT NULL
       )
     ''')
-
     c.execute('''
-      CREATE TABLE Entry (
-        EntryId        INTEGER   PRIMARY KEY,
+      CREATE TABLE Character (
+        CharacterId   INTEGER   PRIMARY KEY,
+        Name          TEXT      NOT NULL,
+        ImageUrl      TEXT      NOT NULL,
+        AnilistId     INTEGER   NOT NULL
+      )
+    ''')
+    c.execute('''
+      CREATE TABLE AnimeEntry (
+        EntryId   INTEGER   PRIMARY KEY,
         Date      TEXT      NOT NULL,
         Rank      INTEGER   NOT NULL,
         UserId    INTEGER   NOT NULL,
@@ -56,23 +79,20 @@ def db_create_tables():
         FOREIGN KEY(AnimeId) REFERENCES Anime(AnimeId)
       )
     ''')
+    c.execute('''
+      CREATE TABLE CharacterEntry (
+        EntryId       INTEGER   PRIMARY KEY,
+        Date          TEXT      NOT NULL,
+        Rank          INTEGER   NOT NULL,
+        UserId        INTEGER   NOT NULL,
+        CharacterId   INTEGER   NOT NULL,
+        FOREIGN KEY(UserId) REFERENCES User(UserId),
+        FOREIGN KEY(CharacterId) REFERENCES Character(CharacterId)
+      )
+    ''')
     conn.commit()
     conn.close()
     return 0
-
-
-
-def db_fetch_table(table_name, column = '*', condition = False):
-  conn = sqlite3.connect('data.db')
-  c = conn.cursor()
-  if condition:
-    c.execute(f'SELECT {column} FROM {table_name} WHERE {condition}')
-  else: 
-    c.execute(f'SELECT {column} FROM {table_name}')
-  items = c.fetchall()
-  conn.commit()
-  conn.close()
-  return items
 
 
 
@@ -96,7 +116,17 @@ def db_add_anime(title, image_url, anilist_id):
 
 
 
-def db_add_entry(date, rank, discord_id, anilist_id):
+def db_add_character(name, image_url, anilist_id):
+  conn = sqlite3.connect('data.db')
+  c = conn.cursor()
+  c.execute('INSERT INTO Character VALUES (NULL,?,?,?)', (name, image_url, anilist_id))
+  conn.commit()
+  conn.close()
+  return 0
+
+
+
+def db_add_anime_entry(date, rank, discord_id, anilist_id):
   conn = sqlite3.connect('data.db')
   c = conn.cursor()
   c.execute(f'SELECT UserId FROM User WHERE DiscordId = "{discord_id}"')
@@ -104,7 +134,22 @@ def db_add_entry(date, rank, discord_id, anilist_id):
   c.execute(f'SELECT AnimeId FROM Anime WHERE AnilistId = "{anilist_id}"')
   anime_id = c.fetchone()[0]
   c.execute ('PRAGMA foreign_keys = ON')
-  c.execute('INSERT INTO Entry VALUES (NULL,?,?,?,?)', (date, rank, user_id, anime_id))
+  c.execute('INSERT INTO AnimeEntry VALUES (NULL,?,?,?,?)', (date, rank, user_id, anime_id))
+  conn.commit()
+  conn.close()
+  return 0
+
+
+
+def db_add_character_entry(date, rank, discord_id, anilist_id):
+  conn = sqlite3.connect('data.db')
+  c = conn.cursor()
+  c.execute(f'SELECT UserId FROM User WHERE DiscordId = "{discord_id}"')
+  user_id = c.fetchone()[0]
+  c.execute(f'SELECT CharacterId FROM Character WHERE AnilistId = "{anilist_id}"')
+  character_id = c.fetchone()[0]
+  c.execute ('PRAGMA foreign_keys = ON')
+  c.execute('INSERT INTO CharacterEntry VALUES (NULL,?,?,?,?)', (date, rank, user_id, character_id))
   conn.commit()
   conn.close()
   return 0
@@ -146,6 +191,20 @@ def db_get_anime(anilist_id):
 
 
 
+def db_get_character(anilist_id):
+  conn = sqlite3.connect('data.db')
+  c = conn.cursor()
+  c.execute(f'SELECT Name, ImageUrl, AnilistId FROM Character WHERE AnilistId = "{anilist_id}"')
+  character = c.fetchone()
+  conn.commit()
+  conn.close()
+  if character == None:
+    return False
+  else:
+    return Character(character[0], character[1], character[2])
+
+
+
 def db_is_user_match_anime(discord_id, anilist_id):
   conn = sqlite3.connect('data.db')
   c = conn.cursor()
@@ -154,7 +213,26 @@ def db_is_user_match_anime(discord_id, anilist_id):
   c.execute(f'SELECT AnimeId FROM Anime WHERE AnilistId = "{anilist_id}"')
   anime_id = c.fetchone()[0]
 
-  c.execute(f'SELECT * FROM Entry WHERE UserId = {user_id} And AnimeId = {anime_id}')
+  c.execute(f'SELECT * FROM AnimeEntry WHERE UserId = {user_id} And AnimeId = {anime_id}')
+  anime = c.fetchone()
+  conn.commit()
+  conn.close()
+  if anime == None:
+    return False
+  else:
+    return True
+
+
+
+def db_is_user_match_character(discord_id, anilist_id):
+  conn = sqlite3.connect('data.db')
+  c = conn.cursor()
+  c.execute(f'SELECT UserId FROM User WHERE DiscordId = "{discord_id}"')
+  user_id = c.fetchone()[0]
+  c.execute(f'SELECT CharacterId FROM Character WHERE AnilistId = "{anilist_id}"')
+  anime_id = c.fetchone()[0]
+
+  c.execute(f'SELECT * FROM CharacterEntry WHERE UserId = {user_id} And CharacterId = {anime_id}')
   anime = c.fetchone()
   conn.commit()
   conn.close()
@@ -175,16 +253,16 @@ def db_get_anime_list_by_user(discord_id):
       Anime.Title,
       Anime.ImageUrl,
       Anime.AnilistId,
-      Entry.Date,
-      Entry.Rank
+      AnimeEntry.Date,
+      AnimeEntry.Rank
     FROM
-      Entry 
+      AnimeEntry 
     JOIN Anime 
-      ON Entry.AnimeId = Anime.AnimeId
+      ON AnimeEntry.AnimeId = Anime.AnimeId
     WHERE 
-      Entry.UserId = {user_id}
+      AnimeEntry.UserId = {user_id}
     ORDER BY
-      Entry.Rank ASC
+      AnimeEntry.Rank ASC
   ''')
   entries = c.fetchall()
   conn.commit()
@@ -196,16 +274,63 @@ def db_get_anime_list_by_user(discord_id):
 
 
 
-def db_preprocess_rank(discord_id, input_rank):
+def db_get_character_list_by_user(discord_id):
   conn = sqlite3.connect('data.db')
   c = conn.cursor()
   c.execute(f'SELECT UserId FROM User WHERE DiscordId = "{discord_id}"')
   user_id = c.fetchone()[0]
-  c.execute(f'SELECT COUNT(EntryId) From Entry WHERE UserId = {user_id}')
+  c.execute(f'''
+    SELECT 
+      Character.Name,
+      Character.ImageUrl,
+      Character.AnilistId,
+      CharacterEntry.Date,
+      CharacterEntry.Rank
+    FROM
+      CharacterEntry 
+    JOIN Character 
+      ON CharacterEntry.CharacterId = Character.CharacterId
+    WHERE 
+      CharacterEntry.UserId = {user_id}
+    ORDER BY
+      CharacterEntry.Rank ASC
+  ''')
+  entries = c.fetchall()
+  conn.commit()
+  conn.close()
+  if entries == []:
+    return False
+  else:
+    return list(map(lambda entry: CharacterEntry(entry[0], entry[1], entry[2], entry[3], entry[4]), entries))
+
+
+
+def db_preprocess_anime_rank(discord_id, input_rank):
+  conn = sqlite3.connect('data.db')
+  c = conn.cursor()
+  c.execute(f'SELECT UserId FROM User WHERE DiscordId = "{discord_id}"')
+  user_id = c.fetchone()[0]
+  c.execute(f'SELECT COUNT(EntryId) From AnimeEntry WHERE UserId = {user_id}')
   max_rank = c.fetchone()[0]
   # Reverse to resolve double operation
   for current_rank in range(max_rank, input_rank-1, -1):
-    c.execute(f'UPDATE Entry SET Rank = {current_rank + 1} WHERE Rank = {current_rank}')
+    c.execute(f'UPDATE AnimeEntry SET Rank = {current_rank + 1} WHERE Rank = {current_rank}')
+  conn.commit()
+  conn.close()
+  return 0
+
+
+
+def db_preprocess_character_rank(discord_id, input_rank):
+  conn = sqlite3.connect('data.db')
+  c = conn.cursor()
+  c.execute(f'SELECT UserId FROM User WHERE DiscordId = "{discord_id}"')
+  user_id = c.fetchone()[0]
+  c.execute(f'SELECT COUNT(EntryId) From CharacterEntry WHERE UserId = {user_id}')
+  max_rank = c.fetchone()[0]
+  # Reverse to resolve double operation
+  for current_rank in range(max_rank, input_rank-1, -1):
+    c.execute(f'UPDATE CharacterEntry SET Rank = {current_rank + 1} WHERE Rank = {current_rank}')
   conn.commit()
   conn.close()
   return 0
@@ -213,12 +338,14 @@ def db_preprocess_rank(discord_id, input_rank):
 
 
 # For test only, will delete
-# def db_reset():
-#   conn = sqlite3.connect('data.db')
-#   c = conn.cursor()
-#   c.execute('DROP TABLE User')
-#   c.execute('DROP TABLE Anime')
-#   c.execute('DROP TABLE Entry')
-#   conn.commit()
-#   conn.close()
-#   return 0
+def db_reset():
+  conn = sqlite3.connect('data.db')
+  c = conn.cursor()
+  c.execute('DROP TABLE User')
+  c.execute('DROP TABLE Anime')
+  c.execute('DROP TABLE Character')
+  c.execute('DROP TABLE AnimeEntry')
+  c.execute('DROP TABLE CharacterEntry')
+  conn.commit()
+  conn.close()
+  return 0

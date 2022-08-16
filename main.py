@@ -45,28 +45,52 @@ async def on_message(message):
 	msg = message.content
 	author = message.author
 
-	if msg.startswith('+anime ') or msg.startswith('+add '):
+	if msg.startswith('+anime '):
 		splitted = msg.split()
 		rank = int(splitted[1])
 		search_term = ' '.join(splitted[2:])
-		anime = discord_interface.add(author.name, author.id, search_term, rank)
-		if not isinstance(anime, anime_fetcher.Anime):
+		anime, processed_rank = discord_interface.add_anime(author.name, author.id, search_term, rank)
+		if isinstance(anime, str):
 			await message.channel.send(anime)
 		else:
-			await message.channel.send(f'**{anime.title}** added by ***{author.name}*** with rank ***{rank}***')
+			await message.channel.send(f'**{anime.title}** added by ***{author.name}*** with rank ***{processed_rank}***')
 			image = discord.Embed()
 			image.set_image(url=anime.image_url)
 			await message.channel.send(embed=image)
 
 
-	if msg.startswith('+userlist ') or msg.startswith('+user '):
+	if msg.startswith('+character ') or msg.startswith('+char '): 
+		splitted = msg.split()
+		rank = int(splitted[1])
+		search_term = ' '.join(splitted[2:])
+		character, processed_rank = discord_interface.add_character(author.name, author.id, search_term, rank)
+		if isinstance(character, str):
+			await message.channel.send(character)
+		else:
+			await message.channel.send(f'**{character.name}** added by ***{author.name}*** with rank ***{processed_rank}***')
+			image = discord.Embed()
+			image.set_image(url=character.image_url)
+			await message.channel.send(embed=image)
+
+
+	if msg.startswith('+anime_list ') or msg.startswith('+animelist '):
 		username = msg.split()[1]
-		anime_list = discord_interface.userlist(username)
+		anime_list = discord_interface.list_anime(username)
 		if not type(anime_list) == list:
 			await message.channel.send(anime_list)
 		else:
 			for anime in anime_list:
 				await message.channel.send(f'{anime.rank}. {anime.title}')
+
+
+	if msg.startswith('+character_list ') or msg.startswith('+characterlist ') or msg.startswith('+charlist '):
+		username = msg.split()[1]
+		character_list = discord_interface.list_character(username)
+		if not type(character_list) == list:
+			await message.channel.send(character_list)
+		else:
+			for character in character_list:
+				await message.channel.send(f'{character.rank}. {character.name}')
 
 
 	if msg == '+help' or msg == '+anime haven':
