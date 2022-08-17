@@ -8,6 +8,8 @@ def add_anime(username, discord_id, search_term, input_rank):
   if input_rank <= 0:
     return 'Invalid rank, use positive number'
   anime = anime_fetcher.search_anime(search_term)
+  if anime == None:
+    return 'No anime found with the given query'
   if not database.db_get_user(discord_id=discord_id):
     database.db_add_user(username, discord_id)
   if not database.db_get_anime(anime.anilist_id):
@@ -26,7 +28,7 @@ def add_anime(username, discord_id, search_term, input_rank):
   else:
     database.db_preprocess_anime_rank(discord_id, input_rank)
   database.db_add_anime_entry(date_string, input_rank, discord_id, anime.anilist_id)
-  return anime, input_rank
+  return database.AnimeEntry(anime.title, anime.image_url, anime.anilist_id, date_string, input_rank)
 
 
 
@@ -34,6 +36,8 @@ def add_character(username, discord_id, search_term, input_rank):
   if input_rank <= 0:
     return 'Invalid rank, use positive number'
   character = anime_fetcher.search_character(search_term)
+  if character == None:
+    return 'No character found with the given query'
   if not database.db_get_user(discord_id=discord_id):
     database.db_add_user(username, discord_id)
   if not database.db_get_character(character.anilist_id):
@@ -52,7 +56,7 @@ def add_character(username, discord_id, search_term, input_rank):
   else:
     database.db_preprocess_character_rank(discord_id, input_rank)
   database.db_add_character_entry(date_string, input_rank, discord_id,character.anilist_id)
-  return character, input_rank
+  return database.CharacterEntry(character.name, character.image_url, character.anilist_id, date_string, input_rank)
 
 
 # Returns a list of instance of anime if successful, error message when failed

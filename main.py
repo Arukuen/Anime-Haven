@@ -1,117 +1,81 @@
 import discord
-import anime_fetcher
+from discord.ext import commands
 import os
-import discord_interface
 from dotenv import load_dotenv
+
+import discord_interface
 
 # Module for fetching hentai is currently not working
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 
-client = discord.Client()
-
-database = {
-	'user': {}
-}
+bot = commands.Bot(command_prefix='+')
 
 
-# Obsolete functions
-# def add_anime_to_user(username, anime_title, rank):
-# 	if username not in database['user'].keys():
-# 		database['user'][username] = [anime_title]
-# 	else:
-# 		#print(rank, len(database['user']))
-# 		if rank > len(database['user'][username]):
-# 			database['user'][username].append(anime_title)
-# 		else:
-# 			database['user'][username].insert(rank-1, anime_title)
-
-# def list_user(username):
-# 	if username in database['user'].keys():
-# 		numbered_list = [f'{index+1}. {anime}' for index, anime in enumerate(database['user'][username])]
-# 		return "\n".join(numbered_list)
-# 	return "Username Invalid"
-
-
-
-
-@client.event
+@bot.event
 async def on_ready():
-	print(f'Logged in as {client.user}')
-
-@client.event
-async def on_message(message):
-	msg = message.content
-	author = message.author
-
-	if msg.startswith('+anime '):
-		splitted = msg.split()
-		rank = int(splitted[1])
-		search_term = ' '.join(splitted[2:])
-		anime, processed_rank = discord_interface.add_anime(author.name, author.id, search_term, rank)
-		if isinstance(anime, str):
-			await message.channel.send(anime)
-		else:
-			await message.channel.send(f'**{anime.title}** added by ***{author.name}*** with rank ***{processed_rank}***')
-			image = discord.Embed()
-			image.set_image(url=anime.image_url)
-			await message.channel.send(embed=image)
+	print(f'Logged in as {bot.user}')
 
 
-	if msg.startswith('+character ') or msg.startswith('+char '): 
-		splitted = msg.split()
-		rank = int(splitted[1])
-		search_term = ' '.join(splitted[2:])
-		character, processed_rank = discord_interface.add_character(author.name, author.id, search_term, rank)
-		if isinstance(character, str):
-			await message.channel.send(character)
-		else:
-			await message.channel.send(f'**{character.name}** added by ***{author.name}*** with rank ***{processed_rank}***')
-			image = discord.Embed()
-			image.set_image(url=character.image_url)
-			await message.channel.send(embed=image)
+@bot.command(name='anime')
+async def anime(ctx, *args):
+	rank = int(args[0])
+	search_term = ' '.join(args[1:])
+	author = ctx.message.author
+
+	anime = discord_interface.add_anime(author.name, author.id, search_term, rank)
+	if isinstance(anime, str):
+		await ctx.send(anime)
+	else:
+		await ctx.send(f'**{anime.title}** added by ***{author.name}*** with rank ***{anime.rank}***')
+		image = discord.Embed()
+		image.set_image(url=anime.image_url)
+		await ctx.send(embed=image)
 
 
-	if msg.startswith('+anime_list ') or msg.startswith('+animelist '):
-		username = msg.split()[1]
-		anime_list = discord_interface.list_anime(username)
-		if not type(anime_list) == list:
-			await message.channel.send(anime_list)
-		else:
-			for anime in anime_list:
-				await message.channel.send(f'{anime.rank}. {anime.title}')
+@bot.command(name='char')
+async def character(ctx, *args):
+	rank = int(args[0])
+	search_term = ' '.join(args[1:])
+	author = ctx.message.author
+
+	character = discord_interface.add_character(author.name, author.id, search_term, rank)
+	if isinstance(character, str):
+		await ctx.send(character)
+	else:
+		await ctx.send(f'**{character.name}** added by ***{author.name}*** with rank ***{character.rank}***')
+		image = discord.Embed()
+		image.set_image(url=character.image_url)
+		await ctx.send(embed=image)
 
 
-	if msg.startswith('+character_list ') or msg.startswith('+characterlist ') or msg.startswith('+charlist '):
-		username = msg.split()[1]
-		character_list = discord_interface.list_character(username)
-		if not type(character_list) == list:
-			await message.channel.send(character_list)
-		else:
-			for character in character_list:
-				await message.channel.send(f'{character.rank}. {character.name}')
+@bot.command(name='anime_list')
+async def anime_list(ctx, *args):
+	username = ' '.join(args)
+	anime_list = discord_interface.list_anime(username)
+	if not type(anime_list) == list:
+		await ctx.send(anime_list)
+	else:
+		response = ''
+		for anime in anime_list:
+			response = f'{response}\n{anime.rank}. {anime.title}'
+		await ctx.send(response)
 
 
-	if msg == '+help' or msg == '+anime haven':
-		await message.channel.send('''
-Anime Haven is a bot for ranking your favorite anime for others to see. Below are the available commands:
-
-**+anime [rank] [title]**
-Adds the anime with the specified title to the user’s list following the provided rank. If another anime already exist with the same rank on the list, the new anime replaces it, and the old anime moves down the rank.
-Examples:
-+anime 1 boku no pico 
-+anime 2 sao 
-+anime 3 lycoris recoil 
-+anime 4 domestic girlfriend 
-
-**+userlist [username]**
-View the list of anime of the user with the provided username.
-Example:
-+userlist Arukuen
-		''')
+@bot.command(name='char_list')
+async def char_list(ctx, *args):
+	username = ' '.join(args)
+	char_list = discord_interface.list_character(username)
+	if not type(char_list) == list:
+		await ctx.send(char_list)
+	else:
+		response = ''
+		for char in char_list:
+			response = f'{response}\n{char.rank}. {char.name}'
+		await ctx.send(response)
 
 
-client.run(TOKEN)
+bot.run(TOKEN)
 
 
