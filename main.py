@@ -1,81 +1,80 @@
 import discord
 from discord.ext import commands
+from discord import app_commands
 import os
 from dotenv import load_dotenv
-
 import discord_interface
-
-# Module for fetching hentai is currently not working
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 
-bot = commands.Bot(command_prefix='+')
+
+class MyClient(discord.Client):
+    def __init__(self, *, intents: discord.Intents) -> None:
+        super().__init__(intents=intents)
+        self.synced = False
+    
+    async def on_ready(self):
+        await self.wait_until_ready()
+        if not self.synced:
+            await tree.sync(guild = discord.Object(id=868778090422210600))
+            self.synced = True
+        print(f'Logged in as {self.user}.')
+
+client = MyClient(intents=discord.Intents.default())
+tree = app_commands.CommandTree(client)
 
 
-@bot.event
-async def on_ready():
-	print(f'Logged in as {bot.user}')
-
-
-@bot.command(name='anime')
-async def anime(ctx, *args):
-	rank = int(args[0])
-	search_term = ' '.join(args[1:])
-	author = ctx.message.author
+@tree.command(name = 'anime', description = "Adds anime to user's list", guild = discord.Object(id=868778090422210600))
+async def anime(interaction: discord.Interaction, rank: int, search_term: str):
+	author = interaction.user
 
 	anime = discord_interface.add_anime(author.name, author.id, search_term, rank)
 	if isinstance(anime, str):
-		await ctx.send(anime)
+		await interaction.response.send_message(content = anime)
 	else:
-		await ctx.send(f'**{anime.title}** added by ***{author.name}*** with rank ***{anime.rank}***')
 		image = discord.Embed()
 		image.set_image(url=anime.image_url)
-		await ctx.send(embed=image)
+		await interaction.response.send_message(content = f'**{anime.title}** added by ***{author.name}*** with rank ***{anime.rank}***', embed = image)
 
 
-@bot.command(name='char')
-async def character(ctx, *args):
-	rank = int(args[0])
-	search_term = ' '.join(args[1:])
-	author = ctx.message.author
+@tree.command(name = 'char', description = "Adds character to user's list", guild = discord.Object(id=868778090422210600))
+async def char(interaction: discord.Interaction, rank: int, search_term: str):
+	author = interaction.user
 
 	character = discord_interface.add_character(author.name, author.id, search_term, rank)
 	if isinstance(character, str):
-		await ctx.send(character)
+		await interaction.response.send_message(character)
 	else:
-		await ctx.send(f'**{character.name}** added by ***{author.name}*** with rank ***{character.rank}***')
 		image = discord.Embed()
 		image.set_image(url=character.image_url)
-		await ctx.send(embed=image)
+		await interaction.response.send_message(content = f'**{character.name}** added by ***{author.name}*** with rank ***{character.rank}***', embed = image)
+		
 
-
-@bot.command(name='anime_list')
-async def anime_list(ctx, *args):
-	username = ' '.join(args)
+@tree.command(name = 'anime_list', description = "Show user's list of anime", guild = discord.Object(id=868778090422210600))
+async def anime_list(interaction: discord.Interaction, username: str):
 	anime_list = discord_interface.list_anime(username)
 	if not type(anime_list) == list:
-		await ctx.send(anime_list)
+		await interaction.response.send_message(anime_list)
 	else:
 		response = ''
 		for anime in anime_list:
 			response = f'{response}\n{anime.rank}. {anime.title}'
-		await ctx.send(response)
+		await interaction.response.send_message(response)
 
 
-@bot.command(name='char_list')
-async def char_list(ctx, *args):
-	username = ' '.join(args)
+@tree.command(name = 'char_list', description = "Show user's list of characters", guild = discord.Object(id=868778090422210600))
+async def char_list(interaction: discord.Interaction, username: str):
 	char_list = discord_interface.list_character(username)
 	if not type(char_list) == list:
-		await ctx.send(char_list)
+		await interaction.response.send_message(char_list)
 	else:
 		response = ''
 		for char in char_list:
 			response = f'{response}\n{char.rank}. {char.name}'
-		await ctx.send(response)
+		await interaction.response.send_message(response)
 
 
-bot.run(TOKEN)
+client.run(TOKEN)
 
 
